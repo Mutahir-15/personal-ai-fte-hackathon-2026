@@ -1,1 +1,0 @@
-# personal-ai-fte-hackathon-2026
