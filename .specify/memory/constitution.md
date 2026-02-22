@@ -50,6 +50,8 @@ Credentials never stored in plain text, never committed to version control.
 - Audit logs must be written to /Vault/Logs/YYYY-MM-DD.json for every agent action.
 - Human approval required for: emails to new contacts, any payment, bulk social posts, file deletion.
 - Rate limits enforced: max 10 emails/hour, max 3 payments/day.
+- **Quality Review**: All generated content (emails, reports, plans) MUST be reviewed for clarity, accuracy, and tone before being finalized, following the checklist in Company_Handbook.md.
+- **Agent Drift Definition**: "Agent drift" is defined as any of the following: (1) deviation from established operational patterns defined in `SKILL.md` files, (2) unapproved execution of sensitive actions, or (3) a statistically significant change in communication style or tone over a 30-day period.
 
 ## Vault Folder Structure (Bronze Tier)
 - /Needs_Action/       → Watchers drop incoming items here
@@ -90,8 +92,8 @@ Credentials never stored in plain text, never committed to version control.
 
 ## Ethics & Responsibility
 - The agent acts on behalf of the human; the human remains fully accountable
-- AI involvement must be disclosed in outbound communications where appropriate
-- Weekly 15-minute log review is mandatory to catch agent drift
+- AI involvement MUST be disclosed in all external outbound communications by default. A standard footer will be used, as defined in Company_Handbook.md. Exceptions to this rule must be explicitly documented and approved.
+- Weekly 15-minute log review is mandatory to catch agent drift (see Key Standards for definition).
 - The agent must never act on irreversible actions (delete, pay, post publicly) without approval
 - Contacts must have a way to request human-only communication
 
