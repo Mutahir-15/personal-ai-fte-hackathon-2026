@@ -1,165 +1,326 @@
-# Skill: vault-setup
+# Skill: Vault Setup (v1.0.0)
 
-**Version**: 1.0.0
+## Purpose
+This skill initializes the complete Obsidian vault folder structure and seeds all required markdown files for the Personal AI Employee (Bronze Tier). It establishes the foundational directory and file structure upon which all other AI employee operations depend.
 
-## 1. Purpose
+## Inputs
+-   **`VAULT_ROOT_PATH`**: The absolute path to where the Obsidian vault should be created or updated (e.g., `C:\Users\<YOUR_USERNAME>\AI_Employee_Vault`). This is passed as a command-line argument to the Python script.
 
-This skill sets up the complete Obsidian vault folder structure and seeds all required markdown files for the Personal AI Employee (Bronze Tier). It is the foundational skill that creates the necessary directory and file hierarchy for all other agent operations. Its idempotency ensures it can be run safely at any time to verify or repair the vault structure.
+## Outputs
+-   **Folders Created**:
+    -   `{{VAULT_ROOT_PATH}}\Needs_Action`
+    -   `{{VAULT_ROOT_PATH}}\Plans`
+    -   `{{VAULT_ROOT_PATH}}\Done`
+    -   `{{VAULT_ROOT_PATH}}\Pending_Approval`
+    -   `{{VAULT_ROOT_PATH}}\Approved`
+    -   `{{VAULT_ROOT_PATH}}\Rejected`
+    -   `{{VAULT_ROOT_PATH}}\Vault\Logs`
+    -   `{{VAULT_ROOT_PATH}}\Accounting`
+    -   `{{VAULT_ROOT_PATH}}\Briefings`
+-   **Seed Markdown Files Created**:
+    -   `{{VAULT_ROOT_PATH}}\Dashboard.md` (containing a template for bank balance, pending messages, active projects)
+    -   `{{VAULT_ROOT_PATH}}\Company_Handbook.md` (containing rules of engagement for the AI agent)
+    -   `{{VAULT_ROOT_PATH}}\Business_Goals.md` (containing Q1 objectives, revenue targets, and key metrics table)
 
-## 2. Inputs
+## Pre-conditions
+-   **Operating System**: Windows 10.
+-   **Python**: Python 3.13+ installed and accessible via `python` or `python3` command.
+-   **Permissions**: The user running this skill must have sufficient read/write/create permissions for the specified `VAULT_ROOT_PATH`.
 
-- `vault_root_path`: The absolute path to the root directory where the "AI_Employee_Vault" will be created (e.g., `C:\Users\YourUser\Documents`). Provided by the user.
+## Step-by-Step Execution Instructions
+To execute the `vault-setup` skill:
 
-## 3. Outputs
+1.  **Save Python Script**: Save the `vault_setup.py` content (provided below) into the directory: `{{YOUR_PROJECT_ROOT}}\.specify\skills\vault-setup\vault_setup.py`.
+2.  **Run the Script**: Open a PowerShell terminal and execute the script, providing the desired vault root path. Replace `<YOUR_USERNAME>` and `<YOUR_VAULT_NAME>` with your actual details.
 
-- A complete directory structure for the AI Employee vault at `{vault_root_path}\AI_Employee_Vault`.
-- Three seeded markdown files (`Dashboard.md`, `Company_Handbook.md`, `Business_Goals.md`) within the vault.
+    ```powershell
+    python .specify/skills/vault-setup/vault_setup.py "C:\Users\<YOUR_USERNAME>\<YOUR_VAULT_NAME>"
+    ```
+    (Example: `python .specify/skills/vault-setup/vault_setup.py "C:\Users\JohnDoe\AI_Employee_Vault"`)
 
-## 4. Pre-conditions
+3.  **Monitor Output**: Observe the terminal output for messages indicating folder creation and file seeding. Any errors will be logged to the console.
 
-- The user-provided `vault_root_path` must be a valid and accessible directory path on the Windows 10 file system.
-- The Gemini CLI must have permissions to create directories and write files within the `vault_root_path`.
+## Full Python Implementation
+```python
+import os
+import sys
+from pathlib import Path
+from datetime import datetime
 
-## 5. Step-by-Step Execution Instructions
+# Logging function for consistent output
+def log_message(level, message):
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"[{timestamp}] {level.upper()}: {message}")
 
-**Objective**: Create the `AI_Employee_Vault` with its required subdirectories and seed files.
+def setup_vault(vault_root_path_str: str):
+    """
+    Sets up the Obsidian vault folder structure and seeds required markdown files.
+    This function is idempotent.
+    """
+    vault_root_path = Path(vault_root_path_str)
 
-**Path Variable**:
-- Let `VAULT_PATH` = `vault_root_path` + `\AI_Employee_Vault`
+    if not vault_root_path.exists():
+        try:
+            vault_root_path.mkdir(parents=True, exist_ok=True)
+            log_message("INFO", f"Created vault root: {vault_root_path}")
+        except Exception as e:
+            log_message("ERROR", f"Failed to create vault root {vault_root_path}: {e}")
+            sys.exit(1)
+    else:
+        log_message("INFO", f"Vault root already exists: {vault_root_path}. Ensuring structure is correct.")
 
-**Execution Flow**:
+    # Define sub-folders relative to the vault root
+    sub_folders = [
+        "Needs_Action",
+        "Plans",
+        "Done",
+        "Pending_Approval",
+        "Approved",
+        "Rejected",
+        "Vault/Logs",        # Nested path for logs as per prompt context
+        "Accounting",
+        "Briefings",
+    ]
 
-1.  **Check and Create Vault Root**:
-    - Verify if the directory `VAULT_PATH` exists.
-    - If it does not exist, create it.
-    - If it exists, proceed without error.
+    for folder in sub_folders:
+        path = vault_root_path / folder
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            log_message("INFO", f"Ensured folder exists: {path}")
+        except Exception as e:
+            log_message("ERROR", f"Failed to create folder {path}: {e}")
+            # Do not exit, try to continue with other folders/files
 
-2.  **Create Subdirectories**:
-    - For each folder name in the list `["Needs_Action", "Plans", "Done", "Pending_Approval", "Approved", "Rejected", "Logs", "Accounting", "Briefings"]`:
-        - Construct the full path: `SUBDIR_PATH` = `VAULT_PATH` + `` + `folder_name`.
-        - Verify if the directory `SUBDIR_PATH` exists.
-        - If it does not exist, create it.
-        - If it exists, proceed without error.
+    # Define seed markdown files and their content
+    seed_files = {
+        "Dashboard.md": """# AI Employee Dashboard
 
-3.  **Create and Seed `Dashboard.md`**:
-    - Define `FILE_PATH` = `VAULT_PATH` + `\Dashboard.md`.
-    - Verify if the file `FILE_PATH` exists.
-    - If it does not exist, create the file and write the content from the `Dashboard.md Template` (see Section 6).
+## 💰 Bank Balance
+- Current Balance: $ [INSERT CURRENT BALANCE]
+- Last Updated: [YYYY-MM-DD HH:MM]
 
-4.  **Create and Seed `Company_Handbook.md`**:
-    - Define `FILE_PATH` = `VAULT_PATH` + `\Company_Handbook.md`.
-    - Verify if the file `FILE_PATH` exists.
-    - If it does not exist, create the file and write the content from the `Company_Handbook.md Template` (see Section 6).
+## 📩 Pending Messages
+- [ ] Review new messages from [Sender 1]
+- [ ] Respond to [Topic 2] with [Recipient]
+- [ ] Follow up on [Task 3]
 
-5.  **Create and Seed `Business_Goals.md`**:
-    - Define `FILE_PATH` = `VAULT_PATH` + `\Business_Goals.md`.
-    - Verify if the file `FILE_PATH` exists.
-    - If it does not exist, create the file and write the content from the `Business_Goals.md Template` (see Section 6).
+## 🚀 Active Projects
+- **Project Alpha**: [Status]
+  - Next Action: [Action]
+  - Due Date: [YYYY-MM-DD]
+- **Project Beta**: [Status]
+  - Next Action: [Action]
+  - Due Date: [YYYY-MM-DD]
 
-## 6. Seed File Templates
+## ✅ Quick Links
+- [[Company_Handbook]]
+- [[Business_Goals]]
+- [[Needs_Action]]
+""",
+        "Company_Handbook.md": """# Company Handbook for AI Employee
 
----
+## 📜 Rules of Engagement
+
+1.  **Prioritization**:
+    -   Urgent tasks from human oversight take precedence.
+    -   Tasks with direct impact on business goals are prioritized next.
+    -   Routine maintenance and logging should be handled asynchronously where possible.
+
+2.  **Communication**:
+    -   Maintain clear, concise, and professional communication.
+    -   Report progress and significant findings regularly.
+    -   Seek clarification immediately if instructions are ambiguous.
+
+3.  **Autonomy & Initiative**:
+    -   Act within defined parameters and skill sets.
+    -   Proactively identify potential issues or improvements and bring them to attention.
+    -   Document decisions and rationale in ADRs where appropriate.
+
+4.  **Security & Privacy**:
+        -   Never disclose sensitive information.
+        -   Adhere strictly to data handling policies.
+        -   Flag any perceived security vulnerabilities.
+
+5.  **Learning & Improvement**:
+    -   Continuously analyze and adapt based on feedback and new information.
+    -   Suggest improvements to workflows and skills.
+
+## 🔒 Confidentiality
+All internal company information, data, and strategies are to be treated as strictly confidential.
+
+## 🤝 Collaboration
+Work seamlessly with other AI agents and human team members. Avoid redundant efforts.
+""",
+        "Business_Goals.md": """# Business Goals
+
+## 🎯 Q1 Objectives (YYYY)
+
+-   **Objective 1**: [Description]
+    -   Key Results:
+        -   KR 1: [Metric] to [Target] by [Date]
+        -   KR 2: [Metric] to [Target] by [Date]
+-   **Objective 2**: [Description]
+    -   Key Results:
+        -   KR 1: [Metric] to [Target] by [Date]
+        -   KR 2: [Metric] to [Target] by [Date]
+
+## 📈 Revenue Targets
+
+| Quarter | Target Revenue | Actual Revenue | Status |
+| :------ | :------------- | :------------- | :----- |
+| Q1      | $[AMOUNT]     | $[AMOUNT]     | [Status]|
+| Q2      | $[AMOUNT]     | $[AMOUNT]     | [Status]|
+| Q3      | $[AMOUNT]     | $[AMOUNT]     | [Status]|
+| Q4      | $[AMOUNT]     | $[AMOUNT]     | [Status]|
+
+## 📊 Key Performance Indicators (KPIs)
+
+-   **Customer Satisfaction (CSAT)**: [Target %]
+-   **Operational Efficiency**: [Target % reduction in overhead]
+-   **Feature Adoption**: [Target % of users]
+-   **Error Rate**: [Target % reduction]
+"""
+    }
+
+    for filename, content in seed_files.items():
+        file_path = vault_root_path / filename
+        if not file_path.exists():
+            try:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                log_message("INFO", f"Created seed file: {file_path}")
+            except Exception as e:
+                log_message("ERROR", f"Failed to create seed file {file_path}: {e}")
+        else:
+            log_message("INFO", f"Seed file already exists: {file_path}. Skipping creation to maintain idempotency.")
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        log_message("ERROR", "Usage: python vault_setup.py <VAULT_ROOT_PATH>")
+        sys.exit(1)
+    
+    vault_path_arg = sys.argv[1]
+    setup_vault(vault_path_arg)
+    log_message("INFO", "Vault setup process completed.")
+```
+
+## Seed File Templates
 ### Dashboard.md Template
-
 ```markdown
 # AI Employee Dashboard
 
-## Financials
-- **Bank Balance:** $0.00
-- **Pending Invoices:** 0
-- **Recent Transactions:**
-    - None
+## 💰 Bank Balance
+- Current Balance: $ [INSERT CURRENT BALANCE]
+- Last Updated: [YYYY-MM-DD HH:MM]
 
-## Communications
-- **Pending Messages to Review:** 0
-- **Emails to Send:** 0
-- **Social Media Posts Queued:** 0
+## 📩 Pending Messages
+- [ ] Review new messages from [Sender 1]
+- [ ] Respond to [Topic 2] with [Recipient]
+- [ ] Follow up on [Task 3]
 
-## Active Projects
-- **Project Alpha:** On track
-- **Project Beta:** Awaiting feedback
-- **Project Gamma:** Blocked
+## 🚀 Active Projects
+- **Project Alpha**: [Status]
+  - Next Action: [Action]
+  - Due Date: [YYYY-MM-DD]
+- **Project Beta**: [Status]
+  - Next Action: [Action]
+  - Due Date: [YYYY-MM-DD]
 
-## System Status
-- **Last Sync:** {{CURRENT_DATETIME}}
-- **Watcher Status:** All systems operational.
+## ✅ Quick Links
+- [[Company_Handbook]]
+- [[Business_Goals]]
+- [[Needs_Action]]
 ```
 
----
 ### Company_Handbook.md Template
-
 ```markdown
-# AI Employee Company Handbook
+# Company Handbook for AI Employee
 
-## 1. Mission
-To automate repetitive tasks, manage digital communications, and provide actionable insights to drive business efficiency, all while operating under strict human-in-the-loop oversight.
+## 📜 Rules of Engagement
 
-## 2. Rules of Engagement
+1.  **Prioritization**:
+    -   Urgent tasks from human oversight take precedence.
+    -   Tasks with direct impact on business goals are prioritized next.
+    -   Routine maintenance and logging should be handled asynchronously where possible.
 
-### 2.1. Core Principles
-1.  **Local-First:** All sensitive data remains on the local machine unless explicit approval is granted for cloud synchronization.
-2.  **Human-in-the-Loop (HITL):** The agent will NEVER execute sensitive or irreversible actions without direct human approval.
-3.  **Transparency:** Every action taken by the agent is logged and auditable.
+2.  **Communication**:
+    -   Maintain clear, concise, and professional communication.
+    -   Report progress and significant findings regularly.
+    -   Seek clarification immediately if instructions are ambiguous.
 
-### 2.2. Sensitive Actions Requiring Approval
-The following actions must be placed in the `/Pending_Approval/` directory for manual review:
-- Any financial transaction (payments, transfers).
-- Sending emails to new, un-approved contacts.
-- Deleting files or records permanently.
-- Publishing content to public social media platforms.
+3.  **Autonomy & Initiative**:
+    -   Act within defined parameters and skill sets.
+    -   Proactively identify potential issues or improvements and bring them to attention.
+    -   Document decisions and rationale in ADRs where appropriate.
 
-### 2.3. Communication Style
-- **Tone:** Professional, concise, and direct.
-- **Disclosure:** AI involvement will be disclosed in all external outbound communications, using the standard footer: "This message was drafted and sent with the assistance of a personal AI agent."
+4.  **Security & Privacy**:
+    -   Never disclose sensitive information.
+    -   Adhere strictly to data handling policies.
+    -   Flag any perceived security vulnerabilities.
 
-## 3. Operational Procedures
-- **Incoming Work:** All new items detected by watchers are placed in `/Needs_Action/`.
-- **Planning:** Plans generated by the AI are stored in `/Plans/`.
-- **Completed Work:** Finished tasks are archived in `/Done/`.
+5.  **Learning & Improvement**:
+    -   Continuously analyze and adapt based on feedback and new information.
+    -   Suggest improvements to workflows and skills.
+
+## 🔒 Confidentiality
+All internal company information, data, and strategies are to be treated as strictly confidential.
+
+## 🤝 Collaboration
+Work seamlessly with other AI agents and human team members. Avoid redundant efforts.
 ```
 
----
 ### Business_Goals.md Template
-
 ```markdown
 # Business Goals
 
-## Q1 Objectives
-- [ ] Launch Project Alpha.
-- [ ] Increase customer engagement by 15%.
-- [ ] Onboard 5 new clients.
+## 🎯 Q1 Objectives (YYYY)
 
-## Key Metrics & Targets
+-   **Objective 1**: [Description]
+    -   Key Results:
+        -   KR 1: [Metric] to [Target] by [Date]
+        -   KR 2: [Metric] to [Target] by [Date]
+-   **Objective 2**: [Description]
+    -   Key Results:
+        -   KR 1: [Metric] to [Target] by [Date]
+        -   KR 2: [Metric] to [Target] by [Date]
 
-| Metric | Current | Target | Status |
-| :--- | :--- | :--- | :--- |
-| Revenue | $0 | $10,000 | 🔴 |
-| New Leads | 0 | 50 | 🔴 |
-| Client Churn | 0% | < 5% | ✅ |
+## 📈 Revenue Targets
 
-## Long-Term Vision
-- Achieve full automation of the client onboarding process.
-- Expand service offerings to include automated financial reporting.
-- Develop a proactive sales outreach capability.
+| Quarter | Target Revenue | Actual Revenue | Status |
+| :------ | :------------- | :------------- | :----- |
+| Q1      | $[AMOUNT]     | $[AMOUNT]     | [Status]|
+| Q2      | $[AMOUNT]     | $[AMOUNT]     | [Status]|
+| Q3      | $[AMOUNT]     | $[AMOUNT]     | [Status]|
+| Q4      | $[AMOUNT]     | $[AMOUNT]     | [Status]|
+
+## 📊 Key Performance Indicators (KPIs)
+
+-   **Customer Satisfaction (CSAT)**: [Target %]
+-   **Operational Efficiency**: [Target % reduction in overhead]
+-   **Feature Adoption**: [Target % of users]
+-   **Error Rate**: [Target % reduction]
 ```
----
 
-## 7. Post-conditions / Verification
+## Post-conditions / Verification
+To verify successful execution of the `vault-setup` skill:
 
-To verify successful execution, check the following conditions:
-1.  The `VAULT_PATH` directory exists.
-2.  All nine required subdirectories (`Needs_Action`, `Plans`, etc.) exist directly inside `VAULT_PATH`.
-3.  The three seed markdown files (`Dashboard.md`, `Company_Handbook.md`, `Business_Goals.md`) exist directly inside `VAULT_PATH`.
-4.  The contents of the three seed files match their respective templates.
+1.  **Check Folder Structure**: Navigate to the `VAULT_ROOT_PATH` (e.g., `C:\Users\JohnDoe\AI_Employee_Vault`) in your file explorer.
+    -   Confirm that all specified folders (`Needs_Action`, `Plans`, `Done`, `Pending_Approval`, `Approved`, `Rejected`, `Vault\Logs`, `Accounting`, `Briefings`) exist within the vault root.
+2.  **Check Seed Files**: Verify that `Dashboard.md`, `Company_Handbook.md`, and `Business_Goals.md` exist directly under the `VAULT_ROOT_PATH`.
+3.  **Inspect File Content**: Open each `.md` file and ensure its content matches the templates provided in this skill description.
+4.  **Idempotency Check**: Run the skill a second time with the exact same `VAULT_ROOT_PATH`. Confirm that no errors occur and that existing files are not overwritten or duplicated. The console output should indicate that existing folders/files are skipped.
 
-## 8. Error Handling
+## Error Handling
+The `vault-setup` skill incorporates the following error handling:
 
-- **Invalid `vault_root_path`**: If the provided root path is invalid or inaccessible, report an error to the user and halt execution. State: "Error: The provided path '{vault_root_path}' is not a valid directory or is inaccessible. Please provide a valid path."
-- **Directory Exists**: If a directory to be created already exists, do nothing and proceed. This ensures idempotency.
-- **File Exists**: If a seed file to be created already exists, do nothing and proceed. This ensures idempotency and prevents overwriting user modifications.
-- **Permission Denied**: If a file or directory creation fails due to permissions, report an error and halt. State: "Error: Permission denied. Cannot create files or directories in '{VAULT_PATH}'. Please check permissions."
+-   **Invalid Path**: If `VAULT_ROOT_PATH` is not provided as a command-line argument, the script will exit with an error message.
+-   **Permission Denied**: If the script lacks sufficient permissions to create folders or files, it will log an `ERROR` message to the console and attempt to continue with other operations. A fatal error during vault root creation will cause the script to exit.
+-   **Idempotency**: The script is designed to be idempotent. It uses `mkdir(exist_ok=True)` for folders and checks `if not file_path.exists()` before writing seed files. This prevents errors if the skill is run multiple times and ensures existing files are not overwritten. Warnings will be logged for skipped file creations.
 
-## 9. Success Criteria
+## Success Criteria
+The `vault-setup` skill is deemed successful if:
 
-- **PASS**: All directories and seed files listed in the "Required Vault Structure" exist at the correct paths and are not empty.
-- **FAIL**: Any required directory or file is missing after execution.
+-   All specified folders are created or confirmed to exist at the `VAULT_ROOT_PATH`.
+-   All specified seed markdown files (`Dashboard.md`, `Company_Handbook.md`, `Business_Goals.md`) are created or confirmed to exist at the `VAULT_ROOT_PATH` with their correct content.
+-   The script completes without critical errors (exit code 0).
+-   The skill can be run multiple times without corrupting existing data or causing errors, demonstrating idempotency.
