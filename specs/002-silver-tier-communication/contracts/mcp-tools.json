@@ -1,0 +1,70 @@
+{
+  "mcp_version": "1.0.0",
+  "server_name": "email-mcp",
+  "tools": [
+    {
+      "name": "send_email",
+      "description": "Send an approved email via Gmail API",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "to": { "type": "string", "description": "Recipient email" },
+          "subject": { "type": "string" },
+          "body": { "type": "string" },
+          "approval_file": { "type": "string", "description": "Filename in /Approved/ folder" }
+        },
+        "required": ["to", "subject", "body", "approval_file"]
+      }
+    },
+    {
+      "name": "draft_email",
+      "description": "Create a Gmail draft without sending",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "to": { "type": "string" },
+          "subject": { "type": "string" },
+          "body": { "type": "string" }
+        },
+        "required": ["to", "subject", "body"]
+      }
+    },
+    {
+      "name": "search_emails",
+      "description": "Search Gmail inbox",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Gmail search query syntax" },
+          "max_results": { "type": "integer", "default": 10 }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "get_email",
+      "description": "Retrieve full email content by ID",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "message_id": { "type": "string" }
+        },
+        "required": ["message_id"]
+      }
+    },
+    {
+      "name": "reply_email",
+      "description": "Reply to an existing Gmail thread",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "thread_id": { "type": "string" },
+          "message_id": { "type": "string" },
+          "body": { "type": "string" },
+          "approval_file": { "type": "string" }
+        },
+        "required": ["thread_id", "message_id", "body", "approval_file"]
+      }
+    }
+  ]
+}
