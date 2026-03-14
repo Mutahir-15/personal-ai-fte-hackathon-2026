@@ -61,10 +61,10 @@ class FilesystemWatcher(BaseWatcher):
         self.logger.info(f"FilesystemWatcher started monitoring: {self.watch_path}")
         
         AuditLogger.log(
-            skill="filesystem-watcher",
-            action="start_watcher",
-            status="success",
-            metadata={"watch_path": self.watch_path}
+            action_type="start_watcher",
+            actor="filesystem-watcher",
+            target=str(self.watch_path),
+            status="success"
         )
         
         # Initial scan for existing files

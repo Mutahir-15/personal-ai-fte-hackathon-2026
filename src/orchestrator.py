@@ -1,6 +1,7 @@
 import time
 import signal
 import sys
+import os
 import logging
 from src.services.filesystem_watcher import FilesystemWatcher
 from src.services.approval_watcher import ApprovalWatcher
@@ -21,11 +22,17 @@ class Orchestrator:
     """Manages the lifecycle of all watcher services."""
     
     def __init__(self):
+        self.logger = logger
         self.watchers = []
         self.running = True
         
         # Initialize watchers
-        self.watchers.append(FilesystemWatcher())
+        if os.getenv("START_FS_WATCHER", "true").lower() == "true":
+            self.watchers.append(FilesystemWatcher())
+            self.logger.info("FilesystemWatcher initialized by Orchestrator.")
+        else:
+            self.logger.info("FilesystemWatcher disabled in Orchestrator (external process expected).")
+
         self.watchers.append(ApprovalWatcher())
         
         # Register signals for graceful shutdown
@@ -45,10 +52,11 @@ class Orchestrator:
         
         try:
             AuditLogger.log(
-                skill="orchestrator",
-                action="start_orchestrator",
+                action_type="start_orchestrator",
+                actor="orchestrator",
+                target="vault-system",
                 status="success",
-                metadata={"dry_run": Config.DRY_RUN, "vault_root": str(Config.VAULT_ROOT)}
+                parameters={"dry_run": Config.DRY_RUN, "vault_root": str(Config.VAULT_ROOT)}
             )
         except Exception as e:
             logger.error(f"Initial audit logging failed: {e}")
@@ -69,10 +77,11 @@ class Orchestrator:
         except Exception as e:
             logger.error(f"Orchestrator heartbeat loop interrupted: {e}")
             AuditLogger.log(
-                skill="orchestrator",
-                action="runtime_error",
+                action_type="runtime_error",
+                actor="orchestrator",
+                target="vault-system",
                 status="error",
-                metadata={"error": str(e)}
+                error_message=str(e)
             )
         finally:
             self.stop()
@@ -88,8 +97,9 @@ class Orchestrator:
         
         try:
             AuditLogger.log(
-                skill="orchestrator",
-                action="stop_orchestrator",
+                action_type="stop_orchestrator",
+                actor="orchestrator",
+                target="vault-system",
                 status="success"
             )
         except Exception as e:
