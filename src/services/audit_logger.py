@@ -18,31 +18,31 @@ class AuditLogger:
         return Config.LOGS_DIR / f"{log_date.isoformat()}.json"
 
     @classmethod
-    def log(cls, skill: str, action: str, status: str, input_data=None, output_data=None, metadata=None):
-        """Appends a new entry to the daily audit log."""
+    def log(cls, action_type: str, actor: str, target: str, parameters: dict = None, 
+            status: str = "success", log_level: str = "INFO", approval_status: str = "N/A",
+            approved_by: str = "N/A", result: str = "N/A", error_message: str = "N/A",
+            session_id: str = "N/A"):
+        """Appends a new entry to the daily audit log using the required schema."""
         
-        # Include global DRY_RUN status in metadata for transparency
-        metadata = metadata or {}
-        if "dry_run" not in metadata:
-            metadata["dry_run"] = Config.DRY_RUN
-
         entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "agent_id": "gemini-cli-1",  # Fixed for Bronze tier
-            "skill": skill,
-            "action": action,
+            "timestamp": datetime.now().isoformat(),
+            "log_level": log_level,
+            "action_type": action_type,
+            "actor": actor,
+            "target": target,
+            "parameters": parameters or {},
             "status": status,
-            "input": input_data,
-            "output": output_data,
-            "metadata": metadata
+            "approval_status": approval_status,
+            "approved_by": approved_by,
+            "dry_run": Config.DRY_RUN,
+            "result": result,
+            "error_message": error_message,
+            "session_id": session_id
         }
 
         log_path = cls.get_log_path()
-        
-        # Ensure directory exists
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Use file lock for safe concurrent writes
         with FileLockManager.with_lock(log_path):
             data = []
             if log_path.exists():
@@ -56,6 +56,64 @@ class AuditLogger:
             
             with open(log_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2)
+
+        # Update index.json
+        cls._update_index(entry)
+        
+        # Update Dashboard.md
+        cls._update_dashboard(entry)
+
+    @classmethod
+    def _update_index(cls, entry: dict):
+        """Updates the central index.json with the latest log entry."""
+        index_path = Config.LOGS_DIR / "index.json"
+        with FileLockManager.with_lock(index_path):
+            index_data = []
+            if index_path.exists():
+                try:
+                    with open(index_path, 'r', encoding='utf-8') as f:
+                        index_data = json.load(f)
+                except json.JSONDecodeError:
+                    pass
+            
+            # Keep only last 100 entries in index
+            index_data.insert(0, entry)
+            index_data = index_data[:100]
+            
+            with open(index_path, 'w', encoding='utf-8') as f:
+                json.dump(index_data, f, indent=2)
+
+    @classmethod
+    def _update_dashboard(cls, entry: dict):
+        """Updates the Recent Activity section in Dashboard.md."""
+        dashboard_path = Config.VAULT_ROOT / "Dashboard.md"
+        if not dashboard_path.exists():
+            return
+
+        with FileLockManager.with_lock(dashboard_path):
+            try:
+                with open(dashboard_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                activity_header = "## Recent Activity"
+                new_activity = f"- [{entry['timestamp']}] {entry['actor']} -> {entry['action_type']} on {entry['target']} ({entry['status']})"
+                
+                if activity_header in content:
+                    parts = content.split(activity_header)
+                    # Insert new activity at the top of the section
+                    lines = parts[1].strip().split('\n')
+                    # Keep last 10 activities
+                    filtered_lines = [l for l in lines if l.strip().startswith('-')]
+                    filtered_lines.insert(0, new_activity)
+                    parts[1] = "\n" + "\n".join(filtered_lines[:10]) + "\n"
+                    new_content = activity_header.join(parts)
+                else:
+                    new_content = content + f"\n\n{activity_header}\n{new_activity}\n"
+
+                with open(dashboard_path, 'w', encoding='utf-8') as f:
+                    f.write(new_content)
+            except Exception as e:
+                logger.error(f"Failed to update Dashboard.md: {e}")
 
     @classmethod
     def rotate_logs(cls, retention_days: int = 90):
@@ -88,9 +146,10 @@ class AuditLogger:
 if __name__ == "__main__":
     # Test logging
     AuditLogger.log(
-        skill="audit-logger",
-        action="test_entry",
-        status="success",
-        metadata={"test": True}
+        action_type="test_entry",
+        actor="audit-logger-test",
+        target="audit-log-file",
+        parameters={"test": True},
+        status="success"
     )
     print(f"Test entry written to {AuditLogger.get_log_path()}")

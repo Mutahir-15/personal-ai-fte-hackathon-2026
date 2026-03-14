@@ -24,10 +24,12 @@ class BaseAction(ABC):
             try:
                 from src.services.audit_logger import AuditLogger
                 AuditLogger.log(
-                    skill=self.__class__.__name__.lower(),
-                    action="simulated_execution",
+                    action_type="simulated_execution",
+                    actor=self.__class__.__name__,
+                    target=str(args[0]) if args else "N/A",
+                    parameters={"args": str(args), "kwargs": str(kwargs)},
                     status="dry_run",
-                    input_data=str(args) + str(kwargs)
+                    result="Dry run simulation complete"
                 )
             except Exception as e:
                 self.logger.error(f"Failed to log dry run to audit log: {e}")
